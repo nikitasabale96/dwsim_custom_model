@@ -21,13 +21,18 @@ class GeneratePdf extends FormBase {
   }
 
   public function buildForm(array $form, \Drupal\Core\Form\FormStateInterface $form_state) {
-    $mpath = drupal_get_path('module', 'custom_model');
+    // $mpath = drupal_get_path('module', 'custom_model');
+    // $mpath = \Drupal::service('custom_model.module')->getPath('custom_model');
     //var_dump($mpath);die;
     require($mpath . '/pdf/fpdf/fpdf.php');
     require($mpath . '/pdf/phpqrcode/qrlib.php');
     $user = \Drupal::currentUser();
     $x = $user->uid;
-    $proposal_id = arg(3);
+    // $proposal_id = arg(3);
+        $route_match = \Drupal::routeMatch();
+  $proposal_id = $route_match->getParameter('proposal_id');
+ 
+
     $query3 = \Drupal::database()->query("SELECT * FROM custom_model_proposal WHERE approval_status=3 AND uid= :uid AND id=:proposal_id", [
       ':uid' => $user->uid,
       ':proposal_id' => $proposal_id,
@@ -57,7 +62,7 @@ class GeneratePdf extends FormBase {
         ];
       }
     } //$data3->gender
-    $pdf = new FPDF('L', 'mm', 'Letter');
+    $pdf = new \FPDF('L', 'mm', 'Letter');
     if (!$pdf) {
       echo "Error!";
     } //!$pdf
@@ -65,7 +70,7 @@ class GeneratePdf extends FormBase {
     $image_bg = $mpath . "/pdf/images/bg_cert.png";
     $pdf->Image($image_bg, 0, 0, $pdf->GetPageWidth(), $pdf->GetPageHeight());
     $pdf->SetMargins(18, 1, 18);
-    $path = drupal_get_path('module', 'custom_model');
+    // $path = \Drupal::service('custom_model.module')->getPath('module', 'custom_model');
     $pdf->Ln(15);
     $pdf->Ln(20);
     $pdf->SetFont('Arial', 'BI', 25);

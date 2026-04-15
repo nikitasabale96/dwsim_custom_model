@@ -192,14 +192,15 @@ FOSSEE, IIT Bombay', [
 case 'custom_model_proposal_completed':
 
   /* initializing data */
+  $proposal_id = (int) $params['custom_model_proposal_completed']['proposal_id'];
   $proposal_data = \Drupal::database()->select('custom_model_proposal', 'p')
     ->fields('p')
-    ->condition('id', $params['custom_model_proposal_completed']['proposal_id'])
+    ->condition('id', $proposal_id)
     ->range(0, 1)
     ->execute()
     ->fetchObject();
 
-  $user_data = User::load($params['custom_model_proposal_completed']['user_id']);
+  $user_data = \Drupal\user\Entity\User::load($params['custom_model_proposal_completed']['user_id']);
 
   $message['headers'] = $params['custom_model_proposal_completed']['headers'];
 

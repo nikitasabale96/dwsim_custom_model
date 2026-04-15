@@ -186,12 +186,17 @@ class CustomModelProposalStatusForm extends FormBase {
   }
 
   public function submitForm(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
-    // $user = \Drupal::currentUser();
+    $user = \Drupal::currentUser();
     /* get current proposal */
     // $proposal_id = (int) arg(3);
       $proposal_id = (int) \Drupal::routeMatch()->getParameter('id'); // ✅ Needed!
       $user = \Drupal::currentUser();
-    
+     $proposal_data =  \Drupal::database()->select('custom_model_proposal', 'cmp')
+    ->fields('cmp')
+    ->condition('id', $proposal_id)
+    ->execute()
+    ->fetchObject();
+
     //$proposal_q = \Drupal::database()->query("SELECT * FROM {custom_model_proposal} WHERE id = %d", $proposal_id);
     $query = \Drupal::database()->select('custom_model_proposal');
     $query->fields('custom_model_proposal');
@@ -221,100 +226,60 @@ class CustomModelProposalStatusForm extends FormBase {
         ":expected_completion_date" => time(),
       ];
       $result = \Drupal::database()->query($up_query, $args);
-      // CreateReadmeFileCustomModel($proposal_id);
-      // if (!$result) {
-      //   \Drupal::messenger()->addMessage('Error in update status', 'error');
-      //   return;
-      // } //!$result
 
-// Load user
-$user_data = User::load($proposal_data->uid);
 
-// Validate user
-if (!$user_data) {
-  \Drupal::logger('custom_model')->error('User not found for UID: @uid', [
-    '@uid' => $proposal_data->uid,
-  ]);
-  return;
-}
+/* Sending email */
 
-// Get recipient email safely
-$email_to = $user_data->getEmail();
+$user = User::load($proposal_data->uid);
+$email_to = $user ? $user->getEmail() : '';
 
-if (empty($email_to)) {
-  \Drupal::logger('custom_model')->error('User email is empty for UID: @uid', [
-    '@uid' => $proposal_data->uid,
-  ]);
-  return;
-}
-
-// Get config values (replacement for variable_get)
+// Load config
 $config = \Drupal::config('custom_model.settings');
-$site_config = \Drupal::config('system.site');
 
-$from = $config->get('custom_model_from_email') ?: $site_config->get('mail');
-$cc = $config->get('custom_model_cc_emails');
+$from = $config->get('custom_model_from_email');
 $bcc_config = $config->get('custom_model_emails');
+$cc = $config->get('custom_model_cc_emails');
 
-// Include current user email in BCC if needed
-$current_user = \Drupal::currentUser();
-$current_user_entity = User::load($current_user->id());
-$current_user_email = $current_user_entity ? $current_user_entity->getEmail() : '';
+// Build BCC
+$bcc = $email_to;
+if (!empty($bcc_config)) {
+  $bcc .= ', ' . $bcc_config;
+}
 
-$bcc = trim($current_user_email . (!empty($bcc_config) ? ', ' . $bcc_config : ''));
-
-// Build params
-$params = [];
+// Mail params
 $params['custom_model_proposal_completed'] = [
   'proposal_id' => $proposal_id,
   'user_id' => $proposal_data->uid,
 ];
 
-// Build headers safely (NO NULL values)
-$headers = [
-  'From' => $from,
-  'MIME-Version' => '1.0',
-  'Content-Type' => 'text/plain; charset=UTF-8',
-];
+// ✅ SAFE langcode
+$langcode = $user
+  ? $user->getPreferredLangcode()
+  : \Drupal::languageManager()->getDefaultLanguage()->getId();
 
-if (!empty($cc)) {
-  $headers['Cc'] = $cc;
-}
-
-if (!empty($bcc)) {
-  $headers['Bcc'] = $bcc;
-}
-
-$params['headers'] = $headers;
-
-// Send email
+// Send mail
 $mailManager = \Drupal::service('plugin.manager.mail');
 
 $result = $mailManager->mail(
   'custom_model',
   'custom_model_proposal_completed',
   $email_to,
-  \Drupal::languageManager()->getDefaultLanguage()->getId(),
+  $langcode,
   $params,
   $from,
   TRUE
 );
 
 // Handle failure
-if (!$result['result']) {
+if (empty($result['result'])) {
   \Drupal::messenger()->addMessage(' Sending email message.');
-}
-      \Drupal::messenger()->addMessage('Congratulations! Custom Model proposal has been marked as completed. User has been notified of the completion.', 'status');
+}    
+  \Drupal::messenger()->addMessage('Congratulations! Custom Model proposal has been marked as completed. User has been notified of the completion.', 'status');
     }
-    // drupal_goto('custom-model/manage-proposal');
-    // RedirectResponse('lab-migration/manage-proposal');
-    $response = new RedirectResponse(Url::fromRoute('custom_model.proposal_all')->toString());
-  
-    // //   // Send the redirect response
-      $response->send();
-  
+return new RedirectResponse(
+  Url::fromRoute('custom_model.proposal_all')->toString()
+);  
 
-    return;
 
   }
 

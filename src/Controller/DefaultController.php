@@ -1054,62 +1054,145 @@ public function custom_model_download_uploaded_file($proposal_id) {
     //ob_clean();
   }
 
-  public function _list_custom_model_certificates() {
-    $user = \Drupal::currentUser();
-    $query_id = \Drupal::database()->query("SELECT id FROM custom_model_proposal WHERE approval_status=3 AND uid= :uid", [
-      ':uid' => $user->uid
-      ]);
-    $exist_id = $query_id->fetchObject();
-    if ($exist_id) {
-      if ($exist_id->id) {
-        if ($exist_id->id < 3) {
-          \Drupal::messenger()->addMessage('<strong>You need to propose a <a href="https://dwsim.fossee.in/custom-model/proposal">Custom Model Project</a></strong>. If you have already proposed then you Custom Model is under reviewing process', 'status');
-          return '';
-        } //$exist_id->id < 3
-        else {
-          $search_rows = [];
-          global $output;
-          $output = '';
-          $query3 = \Drupal::database()->query("SELECT id,project_title,contributor_name FROM custom_model_proposal WHERE approval_status=3 AND uid= :uid", [
-            ':uid' => $user->uid
-            ]);
-          while ($search_data3 = $query3->fetchObject()) {
-            if ($search_data3->id) {
-              $search_rows[] = [
-                $search_data3->project_title,
-                $search_data3->contributor_name,
-                l('Download Certificate', 'custom-model/certificates/generate-pdf/' . $search_data3->id),
-              ];
-            } //$search_data3->id
-          } //$search_data3 = $query3->fetchObject()
-          if ($search_rows) {
-            $search_header = [
-              'Project Title',
-              'Contributor Name',
-              'Download Certificates',
-            ];
-            $output = theme('table', [
-              'header' => $search_header,
-              'rows' => $search_rows,
-            ]);
-            return $output;
-          } //$search_rows
-          else {
-            echo ("Error");
-            return '';
-          }
-        }
-      }
-    } //$exist_id->id
-    else {
-      \Drupal::messenger()->addMessage('<strong>You need to propose a <a href="https://dwsim.fossee.in/custom-model/proposal">Custom Model Project</a></strong>. If you have already proposed then you Custom Model is under reviewing process', 'status');
-      $page_content = "<span style='color:red;'> No certificate available </span>";
-      return $page_content;
-    }
+//   public function _list_custom_model_certificates() {
+//     $user = \Drupal::currentUser();
+//     $query_id = \Drupal::database()->query("SELECT id FROM custom_model_proposal WHERE approval_status = 3 AND uid= :uid", [
+//       ':uid' => $user->id()
+//       ]);
+//     $exist_id = $query_id->fetchObject();
+//     if ($exist_id) {
+//       if ($exist_id->id) {
+//         if ($exist_id->id < 3) {
+//           \Drupal::messenger()->addMessage('<strong>You need to propose a <a href="https://dwsim.fossee.in/custom-model/proposal">Custom Model Project</a></strong>. If you have already proposed then your Custom Model is under reviewing process', 'status');
+//           return '';
+//         } //$exist_id->id < 3
+//         else {
+//           $search_rows = [];
+//           global $output;
+//           $output = '';
+//           $query3 = \Drupal::database()->query("SELECT id,project_title,contributor_name FROM custom_model_proposal WHERE approval_status=3 AND uid= :uid", [
+//             ':uid' => $user->uid
+//             ]);
+//           while ($search_data3 = $query3->fetchObject()) {
+//             if ($search_data3->id) {
+//               $search_rows[] = [
+//                 $search_data3->project_title,
+//                 $search_data3->contributor_name,
+//               //   l('Download Certificate', 'custom-model/certificates/generate-pdf/' . $search_data3->id),
+
+//               $link = Link::fromTextAndUrl(
+//   'Download Certificate',
+//   Url::fromRoute('custom_model.generate_pdf', ['id' => $search_data3->id])
+// )->toString()
+//               ];
+//             } //$search_data3->id
+//           } //$search_data3 = $query3->fetchObject()
+//           if ($search_rows) {
+//             $search_header = [
+//               'Project Title',
+//               'Contributor Name',
+//               'Download Certificates',
+//             ];
+//             $output = theme('table', [
+//               'header' => $search_header,
+//               'rows' => $search_rows,
+//             ]);
+//             return $output;
+//           } //$search_rows
+//           else {
+//             echo ("Error");
+//             return '';
+//           }
+//         }
+//       }
+//     } //$exist_id->id
+//     else {
+//       \Drupal::messenger()->addMessage('<strong>You need to propose a <a href="https://dwsim.fossee.in/custom-model/proposal">Custom Model Project</a></strong>. If you have already proposed then you Custom Model is under reviewing process', 'status');
+//       // $page_content = "<span style='color:red;'> No certificate available </span>";
+//       return [
+//   '#markup' => "<span style='color:red;'> No certificate available </span>",
+// ];
+//       // return $page_content;
+//     }
+//   }
+
+
+
+public function _list_custom_model_certificates() {
+  $user = \Drupal::currentUser();
+
+  $query_id = \Drupal::database()->query(
+    "SELECT id FROM custom_model_proposal WHERE approval_status = 3 AND uid = :uid",
+    [':uid' => $user->id()]
+  );
+
+  $exist_id = $query_id->fetchObject();
+
+  // ❗ No certificate case
+  if (!$exist_id || empty($exist_id->id)) {
+    \Drupal::messenger()->addMessage(
+      '<strong>You need to propose a <a href="https://dwsim.fossee.in/custom-model/proposal">Custom Model Project</a></strong>. If you have already proposed then your Custom Model is under reviewing process',
+      'status'
+    );
+
+    return [
+      '#markup' => "<span style='color:red;'> No certificate available </span>",
+    ];
   }
 
+  // ❗ Optional condition (check if really needed)
+  if ($exist_id->id < 3) {
+    \Drupal::messenger()->addMessage(
+      '<strong>You need to propose a <a href="https://dwsim.fossee.in/custom-model/proposal">Custom Model Project</a></strong>. If you have already proposed then your Custom Model is under reviewing process',
+      'status'
+    );
+
+    return [
+      '#markup' => '',
+    ];
+  }
+
+  // Fetch rows
+  $query3 = \Drupal::database()->query(
+    "SELECT id, project_title, contributor_name FROM custom_model_proposal WHERE approval_status = 3 AND uid = :uid",
+    [':uid' => $user->id()] // ✅ fixed uid usage
+  );
+
+  $rows = [];
+
+  while ($row = $query3->fetchObject()) {
+$link = Link::fromTextAndUrl(
+  'Download Certificate',
+  Url::fromRoute('custom_model.generate_pdf', ['proposal_id' => $row->id])
+);
+    $rows[] = [
+      $row->project_title,
+      $row->contributor_name,
+      $link,
+    ];
+  }
+
+  // ❗ No rows found
+  if (empty($rows)) {
+    return [
+      '#markup' => "<span style='color:red;'> No certificate available </span>",
+    ];
+  }
+
+  // ✅ Proper Drupal table render array
+  return [
+    '#type' => 'table',
+    '#header' => [
+      'Project Title',
+      'Contributor Name',
+      'Download Certificates',
+    ],
+    '#rows' => $rows,
+  ];
+}
   public function verify_certificates($qr_code = 0) {
-    $qr_code = arg(3);
+    // $qr_code = arg(3);
+
     $route_match = \Drupal::routeMatch();
   $qr_code = $route_match->getParameter('qr_code');
  

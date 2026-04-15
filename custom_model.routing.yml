@@ -204,14 +204,14 @@ custom_model._list_custom_model_certificates:
   options:
     no_cache: TRUE
 custom_model.generate_pdf:
-  path: /custom-model/certificates/generate-pdf
+  path: /custom-model/certificates/generate-pdf/{proposal_id}
   defaults:
     _title: 'Download Certificate'
     _form: \Drupal\custom_model\Form\GeneratePdf
   requirements:
     _permission: 'generate pdf'
 custom_model.verify_certificates_verify_certificates:
-  path: /custom-model/certificates/verify
+  path: /custom-model/certificates/verify/{qr_code}
   defaults:
     qr_code: verify_certificates
     _title: 'Certificate Verification'
